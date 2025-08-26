@@ -17,9 +17,9 @@ sed '1,/^### DATA ###$/d' "$0" | (
   wtype -
 
 rm "$FIFO_NAME"
-
 exit
 
+#shellcheck stop parsing # stop shellcheck before it kills itself
 ### DATA ###
 😀 grinning face face smile happy joy :D grin
 😃 grinning face with big eyes face happy joy haha :D :) smile funny
