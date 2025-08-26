@@ -1,20 +1,23 @@
 #!/usr/bin/env -S make --file
 
 SCRIPTS := $(abspath $(wildcard *.sh))
-SCRIPT_FOLDER := $(HOME)/.local/bin/
+INSTALLATION_FOLDER := $(HOME)/.local/bin/
 
 LN_OPTS := --verbose --symbolic --force
 
-all: *.sh
-	ln $(LN_OPTS) --target-directory=$(SCRIPT_FOLDER) $(SCRIPTS)
+.PHONY: install
+install:
+	ln $(LN_OPTS) --target-directory=$(INSTALLATION_FOLDER) $(SCRIPTS)
 
-%: %.sh
-	ln $(LN_OPTS) --target-directory=$(SCRIPT_FOLDER) $(abspath $@.sh)
+.PHONY: install-%
+install-%: %.sh
+	ln $(LN_OPTS) --target-directory=$(INSTALLATION_FOLDER) $(abspath $@.sh)
 
+.PHONY: help
 help:
 	$(info Link the following:  )
 	$(info ================     )
 	$(info $(SCRIPTS)           )
 	$(info ===============      )
-	$(info To $(SCRIPT_FOLDER)  )
+	$(info To $(INSTALLATION_FOLDER)  )
 	$(info With "ln $(LN_OPTS)" )
