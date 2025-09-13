@@ -12,14 +12,15 @@ CURRENT_WORKSPACE_NAME=$(
 
 if ! NAME=$(
   fuzzel --dmenu \
-    --prompt-only='Rename workspace: ' \
+    --prompt-only='   Rename workspace: ' \
     --search="$CURRENT_WORKSPACE_NAME" \
-    --placeholder='(leave blank to unset)'
+    --placeholder='(whitespace to unset)' \
+    --width 35
 ); then
   exit 1
 fi
 
-if [ -z "$NAME" ]; then
+if [ -z "$(printf %s "$NAME" | tr --delete '[:blank:]')" ]; then
   niri msg action unset-workspace-name
   swayosd-client --custom-message "Workspace name unset" --custom-icon "computer-symbolic"
 else
