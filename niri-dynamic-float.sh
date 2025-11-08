@@ -6,7 +6,7 @@
 # > (.example_property | test("example_regex"))
 # Filters should have commas between them
 
-RULES='[
+readonly RULES='[
 .app_id == "librewolf" and (.title | test(".*Bitwarden.*"))
 ]'
 
