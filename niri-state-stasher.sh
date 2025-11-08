@@ -2,7 +2,7 @@
 
 # Save niri workspace and window state to a file on some interval
 
-NIRI_STATE_FILE="$HOME/.niri-state"
+NIRI_STATE_FILE="$HOME/.niri-state.json"
 STASH_INTERVAL=2m
 STASH_STATE_ONCE=0
 
@@ -29,7 +29,7 @@ for arg in "$@"; do
     STASH_STATE_ONCE=1
     ;;
   *)
-    >&2 echo "Argument '$1' not recognized."
+    >&2 echo "option '$1' not recognized."
     usage
     exit 1
     ;;
@@ -40,7 +40,7 @@ done
 
 >&2 echo "Attempting to store state in '$NIRI_STATE_FILE' every ${STASH_INTERVAL:-[just once]}"
 while true; do
-  if ! [ -w "$NIRI_STATE_FILE" ]; then
+  if [ -f "$NIRI_STATE_FILE" ] && ! [ -w "$NIRI_STATE_FILE" ]; then
     >&2 echo "Could not write to file '$NIRI_STATE_FILE'. Exiting."
     exit 1
   fi
