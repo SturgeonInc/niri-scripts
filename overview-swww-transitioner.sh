@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-WALLPAPER="$HOME/Pictures/monstera-enhanced.png"
-WALLPAPER_OVERVIEW="$HOME/Pictures/monstera-enhanced-overview.png"
+readonly WALLPAPER="$HOME/Pictures/monstera-enhanced.png"
+readonly WALLPAPER_OVERVIEW="$HOME/Pictures/monstera-enhanced-overview.png"
 
 export SWWW_TRANSITION=fade
 export SWWW_TRANSITION_DURATION=0.2
