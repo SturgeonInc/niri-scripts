@@ -1,22 +1,26 @@
 #!/usr/bin/env sh
 
-FIFO_NAME="/tmp/emoji-to-clipboard"
+# -e to exit pipeline immediately on any subcommand failing
+# -u unset variables cause errors when accessed
+# -o pipefail returns first error in pipe as exit code of pipe
+set -euo pipefail
 
-test -f "$FIFO_NAME" || mkfifo "$FIFO_NAME"
-wl-copy < "$FIFO_NAME" &
+EMOJI=$(
+  sed '1,/^### DATA ###$/d' "$0" |
+    fuzzel --prompt='🔍 '\
+           --placeholder='Search emoji'\
+           --dmenu  |
+    cut -d ' ' -f 1 |
+    tr -d '\n'
+)
 
-sed '1,/^### DATA ###$/d' "$0" | (
-    fuzzel --prompt='🔍 ' --placeholder='Search emoji' --dmenu && 
-    swayosd-client \
-      --custom-message "Emoji copied to clipboard" \
-      --custom-icon "emoji-people-symbolic"
-  ) |
-  cut -d ' ' -f 1 |
-  tr -d '\n' |
-  tee "$FIFO_NAME" |
-  wtype -
+wtype "$EMOJI"
+wl-copy "$EMOJI"
 
-rm "$FIFO_NAME"
+swayosd-client \
+  --custom-message "Emoji copied to clipboard" \
+  --custom-icon "emoji-people-symbolic"
+
 exit
 
 #shellcheck stop parsing # stop shellcheck before it kills itself
