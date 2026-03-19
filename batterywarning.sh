@@ -13,7 +13,7 @@ MINIMUM_THRESH="$1"
 state=q0
 
 while true; do
-  perc="$(upower -i "$BATTERY" | grep percentage)"
+  perc="$(upower --show-info "$BATTERY" | grep percentage)"
   perc=${perc##* } # get last word (percentage of battery)
   perc=${perc%\%}  # remove percentage sign
 
@@ -36,7 +36,11 @@ while true; do
     >&2 echo 'Not charging'
     if [ "$STATE_PREV" != "$state" ] && [ "$perc" -le "$MINIMUM_THRESH" ]; then
       >&2 echo "States different and perc <= $THRESH3; playing notification"
-      notify-send --urgency=critical --icon "battery-empty" "LOW BATTERY WARNING: $perc%"
+      notify-send \
+        --transient \
+        --urgency=critical \
+        --icon "battery-empty" \
+        "LOW BATTERY WARNING: $perc%"
       play "$CRIT_ALERT_SOUND"
     fi # current vs prev state
   fi   # chargin
