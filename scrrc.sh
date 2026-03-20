@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+# is a wl-screenrec wrapper
+# also requires jq, notify-send, fuzzel
 
 set -e
 
@@ -9,12 +11,40 @@ NOTIFICATION_ICON='record-screen-symbolic'
 notify() {
   notify-send --icon="$NOTIFICATION_ICON" "$NOTIFICATION_HEADER" "$@"
 }
+usage() {
+  >&2 cat <<EOF
+Usage: $(basename "$0") [OPTIONS] -- SCREENREC_OPTS...
+Screen recorder wrapper script. Offers notification actions to provide a minimal
+GUI to stop, pause, and resume recording. You can also do this manually by just
+SIGINT'ing the command, or on a keybind by pkill'ing wl-screenrec.
+
+E.g. config: 
+Mod+Control+Shift+S { spawn-sh "pkill wl-screenrec || $(basename "$0") --audio"; }
+
+OPTIONS:
+  -h, --help               Show this message
+  -a, --audio              Include audio. Uses a fuzzel menu to pick audio device
+                           since I've had bad experiences with the raw --audio opt;
+                           best to use a *.monitor device. Esc'ing out of picker will
+                           proceed with no audio instead
+  -o, --output             File/Dir to write to. Defaults to 
+                           \$HOME/Videos/Screen Recordings/screenrecording-ISODATE.mkv
+  -f, --format             Recording format, as a file suffix. Overwritten by -o.
+                           Warning: these may require fiddling with codec settings
+                           try ' -- --no-hw'
+  -n, --no-ui              No UI notifications. Recording must be ended manually
+                           Either way, you can pkill wl-screenrec
+  -s, --no-select          Don't select display geometry
+  -u, --no-ui              Don't show the notifications with the pause/play/stop actions
+  SCREENREC_OPTS...        These get passed to wl-screenrec directly
+EOF
+}
 
 opts=$(
   getopt --name "$(basename "$0")" \
     --shell sh \
-    --options o:f:nsh \
-    --longoptions output:format:no-ui,no-select,help \
+    --options o:f:usha \
+    --longoptions output:format:no-ui,no-select,help,audio \
     -- "$@"
 )
 eval "set -- $opts"
@@ -22,20 +52,7 @@ eval "set -- $opts"
 for _ in $(seq $#); do
   case "$1" in
   -h | --help)
-    >&2 cat <<EOF
-Usage: $(basename "$0") [OPTIONS] -- SCREENREC_OPTS...
-  -h, --help               Show this message
-  -o, --output             File/Dir to write to. Defaults to 
-                           \$HOME/Videos/Screen Recordings/screenrecording-ISODATE.mkv
-  -f, --format             Recording format, as a file suffix. Overwritten by -o.
-                           Warning: these may require fiddling with codec settings
-                           try ' -- --no-hw'
-  -n, --no-ui              No UI notifications. Recording must be ended manually
-                           Either way, you can pkill wl-screenrec safely like
-                           pidof wl-screenrec && $(basename "$0") || pkill wl-screenrec
-  -s, --no-select          Don't select display geometry
-  SCREENREC_OPTS...        These get passed to wl-screenrec directly
-EOF
+    usage
     exit
     ;;
   -o | --output)
@@ -52,6 +69,9 @@ EOF
     ;;
   -u | --no-ui)
     UI=0
+    ;;
+  -a | --audio)
+    AUDIO=1
     ;;
   -s | --no-select)
     SELECT=0
@@ -70,6 +90,7 @@ done
 
 : "${SELECT:=1}"
 : "${UI:=1}"
+: "${AUDIO:=0}"
 : "${OUTPUT_FORMAT:=mkv}"
 : "${SCREENREC_DIR="$HOME/Videos/Screen Recordings"}"
 : "${SCREENREC_FILE:="$SCREENREC_DIR/$DEFAULT_FILENAME.$OUTPUT_FORMAT"}"
@@ -81,24 +102,41 @@ if pidof wl-screenrec; then
   exit 1
 fi
 
-# -d for dimension; -o for fullscreen default
 if [ "$SELECT" -eq 1 ]; then
+  # -d for dimension; -o for fullscreen default
   output=$(slurp -d -o) || exit
-  wl-screenrec --geometry="$output" \
-    --filename "$SCREENREC_FILE" \
-    "$@" &
+  select_opt="--geometry='$output'"
+fi
+if [ "$UI" -eq 1 ]; then
+  exec_opt='&'
 else
-  wl-screenrec \
-    --filename "$SCREENREC_FILE" \
-    "$@" &
+  exec_opt='; exit'
 fi
-recording_p=$!
+if [ "$AUDIO" -eq 1 ]; then
+  stream_idx=$(
+    pactl --format='json' list sources short |
+      jq '.[] | (.index | tostring) + "\t" + .name' \
+        --raw-output0 |
+      fuzzel --placeholder='Choose audio device (recommended: *.monitor)' \
+        --accept-nth='1' --with-nth='2' \
+        --minimal-lines \
+        --dmenu0
+  ) &&
+    audio_device=$(
+      pactl --format='json' list sources short |
+        jq --raw-output ".[] | select(.index == $stream_idx) | .name"
+    ) &&
+    audio_opt="--audio --audio-device='$audio_device'" ||
+    AUDIO=0
+fi
 
-# exit with job instead of using notification UI
-if [ "$UI" -eq 0 ]; then
-  fg
-  exit $?
-fi
+eval wl-screenrec \
+  "--filename '$SCREENREC_FILE'" \
+  "$audio_opt" \
+  "$select_opt" \
+  "$*" \
+  " $exec_opt"
+recording_p=$!
 
 if ! ps --pid "$recording_p"; then
   >&2 echo "Screen recording failed"
