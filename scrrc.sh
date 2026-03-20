@@ -31,6 +31,8 @@ Usage: $(basename "$0") [OPTIONS] -- SCREENREC_OPTS...
                            Warning: these may require fiddling with codec settings
                            try ' -- --no-hw'
   -n, --no-ui              No UI notifications. Recording must be ended manually
+                           Either way, you can pkill wl-screenrec safely like
+                           pidof wl-screenrec && $(basename "$0") || pkill wl-screenrec
   -s, --no-select          Don't select display geometry
   SCREENREC_OPTS...        These get passed to wl-screenrec directly
 EOF
@@ -118,7 +120,7 @@ ID=$(notify-send "$NOTIFICATION_HEADER" --print-id)
   while true; do
 
     case "$ACTION" in
-    PAUSE) command kill -s STOP "$recording_p" ;;
+    PAUSE) command kill -STOP "$recording_p" ;;
     *) break ;;
     esac
     >&2 echo PAUSE
@@ -132,7 +134,7 @@ ID=$(notify-send "$NOTIFICATION_HEADER" --print-id)
     )
 
     case "$ACTION" in
-    RESUME) command kill -s CONT "$recording_p" ;;
+    RESUME) command kill -CONT "$recording_p" ;;
     *) break ;;
     esac
     >&2 echo RESUME
@@ -146,14 +148,14 @@ ID=$(notify-send "$NOTIFICATION_HEADER" --print-id)
     )
   done
 
-  kill -s CONT "$recording_p"
-  kill "$recording_p"
+  command kill -CONT "$recording_p"
+  command kill "$recording_p"
 ) &
 loop_p=$!
 
 wait "$recording_p"
 
-ps -p "$loop_p" || command kill "$loop_p"
 notify "Screen recording saved to '$SCREENREC_FILE'" \
   --replace-id="$ID"
-exit
+ps -p "$loop_p" && command kill "$loop_p"
+command kill -KILL "$loop_p"
